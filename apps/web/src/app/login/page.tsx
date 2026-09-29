@@ -18,11 +18,24 @@ export default function LoginPage() {
     setError("");
 
     if (!mfaRequired) {
-      const prelogin = await fetch("/api/auth/prelogin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      let prelogin: Response;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        prelogin = await fetch("/api/auth/prelogin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+      } catch {
+        setError(
+          "Sign-in service timed out. If this persists, check that the cloud database is configured on the deployment."
+        );
+        setLoading(false);
+        return;
+      }
       const preData = await prelogin.json();
 
       if (!prelogin.ok) {

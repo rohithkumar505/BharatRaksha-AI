@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRedis } from "./redis";
+import { getRedis, isRedisConfigured } from "./redis";
 import { getClientIp } from "./audit";
 
 const RATE_LIMIT_PREFIX = "ratelimit:";
@@ -9,8 +9,14 @@ export async function checkRateLimit(
   limit: number,
   windowSeconds: number
 ): Promise<{ allowed: boolean; remaining: number }> {
+  if (!isRedisConfigured()) {
+    return { allowed: true, remaining: limit };
+  }
   try {
     const redis = getRedis();
+    await redis.connect().catch(() => {
+      /* already connected */
+    });
     const redisKey = `${RATE_LIMIT_PREFIX}${key}`;
     const current = await redis.incr(redisKey);
     if (current === 1) {
