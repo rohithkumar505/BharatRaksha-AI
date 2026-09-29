@@ -12,7 +12,7 @@ Optional **Smart Automation+** modules (network, copilot, court assist, etc.) ru
 |---|-----|
 | **GitHub (source)** | https://github.com/rohithkumar505/BharatRaksha-AI |
 | **Live full stack** (UI + API + Postgres + Redis + MinIO + Neo4j + AI) | https://documentation-minus-african-constructed.trycloudflare.com — Docker on your Mac + Cloudflare tunnel |
-| **Cloud deploy** (Next.js UI + API routes on Vercel) | https://bharat-raksha-ai.vercel.app — add `DATABASE_URL` + object storage in Vercel env for full SIH26190 data (see below) |
+| **Cloud deploy** (Next.js UI + API + **Supabase Postgres** — sign-in works) | https://bharat-raksha-ai.vercel.app |
 | **Alignment doc** | [SIH26190_ALIGNMENT.md](./SIH26190_ALIGNMENT.md) |
 
 **Demo login:** `investigator@bharatraksha.gov.in` / `Invest@Bharat2026!`  
