@@ -1,10 +1,12 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Shield } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mfaToken, setMfaToken] = useState("");
@@ -17,40 +19,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    if (!mfaRequired) {
-      let prelogin: Response;
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
-        prelogin = await fetch("/api/auth/prelogin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-      } catch {
-        setError(
-          "Sign-in service timed out. If this persists, check that the cloud database is configured on the deployment."
-        );
-        setLoading(false);
-        return;
-      }
-      const preData = await prelogin.json();
-
-      if (!prelogin.ok) {
-        setError(preData.error ?? "Invalid credentials");
-        setLoading(false);
-        return;
-      }
-
-      if (preData.mfaRequired) {
-        setMfaRequired(true);
-        setLoading(false);
-        return;
-      }
-    }
-
     const result = await signIn("credentials", {
       email,
       password,
@@ -59,6 +27,11 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
+      if (!mfaRequired && result.error.includes("MFA")) {
+        setMfaRequired(true);
+        setLoading(false);
+        return;
+      }
       setError(
         mfaRequired
           ? "Invalid MFA code"
@@ -67,12 +40,16 @@ export default function LoginPage() {
             : `Login failed: ${result.error}`
       );
       setLoading(false);
-    } else if (result?.ok) {
-      window.location.href = "/sih26190";
-    } else {
-      setError("Login failed. Please refresh the page and try again.");
-      setLoading(false);
+      return;
     }
+
+    if (result?.ok) {
+      router.replace("/sih26190");
+      return;
+    }
+
+    setError("Login failed. Please refresh the page and try again.");
+    setLoading(false);
   }
 
   return (

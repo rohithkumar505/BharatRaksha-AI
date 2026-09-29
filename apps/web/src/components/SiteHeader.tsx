@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Settings } from "lucide-react";
 import { AppSidebar } from "@/components/AppSidebar";
-import { VoicePartnerDock } from "@/components/VoicePartnerDock";
 import { NightWatchToggle } from "@/components/NightWatchToggle";
 import { Sih26190ExtensionStrip } from "@/components/Sih26190ExtensionStrip";
 import { isSih26190ExtensionPath } from "@/lib/sih26190-product-scope";
+
+const VoicePartnerDock = dynamic(
+  () => import("@/components/VoicePartnerDock").then((m) => m.VoicePartnerDock),
+  { ssr: false, loading: () => null }
+);
 
 /**
  * App shell: left sidebar + top bar wrapping page content.

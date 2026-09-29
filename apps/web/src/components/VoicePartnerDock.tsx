@@ -36,6 +36,7 @@ export function VoicePartnerDock() {
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
+    if (!open || cases.length > 0) return;
     fetch("/api/cases?limit=30")
       .then((r) => r.json())
       .then((d) => {
@@ -44,7 +45,7 @@ export function VoicePartnerDock() {
         if (list[0]) setCaseId(list[0].id);
       })
       .catch(() => undefined);
-  }, []);
+  }, [open, cases.length]);
 
   function speak(text: string) {
     if (typeof window === "undefined" || !window.speechSynthesis) return;

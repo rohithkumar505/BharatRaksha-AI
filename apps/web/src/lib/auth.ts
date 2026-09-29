@@ -121,27 +121,27 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            failedLoginAttempts: 0,
-            lockedUntil: null,
-            lastLoginAt: new Date(),
-          },
-        });
-
-        await prisma.loginAttempt.create({
-          data: { email, userId: user.id, success: true },
-        });
-
-        await prisma.auditLog.create({
-          data: {
-            userId: user.id,
-            action: "LOGIN_SUCCESS",
-            resource: "auth",
-            details: { email },
-          },
-        });
+        await Promise.all([
+          prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: 0,
+              lockedUntil: null,
+              lastLoginAt: new Date(),
+            },
+          }),
+          prisma.loginAttempt.create({
+            data: { email, userId: user.id, success: true },
+          }),
+          prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              action: "LOGIN_SUCCESS",
+              resource: "auth",
+              details: { email },
+            },
+          }),
+        ]);
 
         logger.audit("User logged in", { userId: user.id, email });
 
