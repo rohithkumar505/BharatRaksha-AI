@@ -3,5 +3,6 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run db:generate && npm run build --workspace=@bharat-raksha/web",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "regions": ["sin1"]
 }
