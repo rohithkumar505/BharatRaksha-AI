@@ -1,0 +1,586 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  INVESTIGATOR
+  SENIOR_OFFICER
+  ADMIN
+  AUDITOR
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  PENDING_REVIEW
+  CLOSED
+  ARCHIVED
+}
+
+enum EntityType {
+  PERSON
+  PHONE
+  EMAIL
+  UPI
+  BANK_ACCOUNT
+  IFSC
+  VEHICLE
+  ADDRESS
+  LOCATION
+  ORGANIZATION
+  SOCIAL_HANDLE
+  IP_ADDRESS
+  DOMAIN
+  CRYPTO_WALLET
+  AMOUNT
+  DATE
+  CASE_ID
+  DEVICE
+}
+
+enum MatchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EvidenceType {
+  FIR
+  CDR
+  BANK_TXN
+  VEHICLE
+  EMAIL
+  TOWER
+  SURVEILLANCE
+  OTHER
+}
+
+enum IngestionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AlertType {
+  CROSS_CASE_LINK
+  COMMUNICATION_BURST
+  TRANSACTION_ANOMALY
+  BRIDGE_NODE
+  COMMON_LOCATION
+  ENTITY_MATCH
+  INTEGRITY_MISMATCH
+  LEGAL_DOCUMENT_REVIEW
+  LEGAL_RETENTION_DUE
+}
+
+enum AlertStatus {
+  NEW
+  ACKNOWLEDGED
+  INVESTIGATING
+  DISMISSED
+  RESOLVED
+}
+
+enum CustodyEvent {
+  COLLECTED
+  UPLOADED
+  VIEWED
+  ACCESSED
+  EXPORTED
+  TRANSFERRED
+  VERIFIED
+  MODIFIED
+  ARCHIVED
+}
+
+enum CustodyTransferStatus {
+  NOT_APPLICABLE
+  PENDING_RECIPIENT
+  CONFIRMED
+}
+
+/// SIH26190 — legal & investigation document lifecycle
+enum LegalDocumentCategory {
+  INVESTIGATION_RECORD
+  FIR
+  COURT_FILING
+  EXHIBIT
+  WITNESS_STATEMENT
+  CHARGE_SHEET_DRAFT
+  PROSECUTION_BRIEF
+  JUDICIAL_ORDER
+  FORENSIC_REPORT
+  OFFICIAL_CORRESPONDENCE
+  INTERNAL_MEMO
+}
+
+enum LegalDocumentStatus {
+  REGISTERED
+  UNDER_REVIEW
+  APPROVED_FOR_COURT
+  SEALED
+  ARCHIVED
+}
+
+enum ClassificationLevel {
+  OFFICIAL
+  RESTRICTED
+  CONFIDENTIAL
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  passwordHash        String
+  name                String
+  role                UserRole  @default(INVESTIGATOR)
+  policeStation       String?
+  badgeNumber         String?
+  mfaEnabled          Boolean   @default(false)
+  mfaSecret           String?
+  isActive            Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  passwordChangedAt   DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  casesAssigned  Case[]           @relation("InvestigatingOfficer")
+  evidence       Evidence[]
+  notes          CaseNote[]
+  auditLogs      AuditLog[]
+  matchReviews   EntityMatch[]    @relation("MatchReviewer")
+  custodyEvents  CustodyLog[]
+  ledgerBlocks   LedgerBlock[]
+  alerts         Alert[]          @relation("AlertAssignee")
+  reports        Report[]
+  snapshots      InvestigationSnapshot[]
+  copilotQueries CopilotQueryLog[]
+  loginAttempts  LoginAttempt[]
+  legalAutomationRuns LegalAutomationRun[]
+  custodyTransfersReceived CustodyLog[] @relation("CustodyTransferRecipient")
+
+  @@index([role])
+  @@index([policeStation])
+  @@index([isActive])
+}
+
+model Case {
+  id                    String       @id @default(cuid())
+  caseNumber            String       @unique
+  crimeType             String
+  location              String?
+  incidentDate          DateTime?
+  priority              CasePriority @default(MEDIUM)
+  status                CaseStatus   @default(OPEN)
+  description           String?      @db.Text
+  policeStation         String?
+  investigatingOfficerId String?
+  investigatingOfficer  User?        @relation("InvestigatingOfficer", fields: [investigatingOfficerId], references: [id])
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  evidence    Evidence[]
+  entities    Entity[]
+  notes       CaseNote[]
+  cdrRecords  CdrRecord[]
+  transactions Transaction[]
+  alerts      Alert[]
+  reports     Report[]
+  snapshots   InvestigationSnapshot[]
+  locations        LocationEvent[]
+  knowledgeChunks  CaseKnowledgeChunk[]
+  copilotQueries   CopilotQueryLog[]
+  legalAutomationRuns LegalAutomationRun[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([policeStation])
+  @@index([investigatingOfficerId])
+  @@index([createdAt])
+}
+
+model CaseNote {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Evidence {
+  id              String          @id @default(cuid())
+  caseId          String
+  case            Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  type            EvidenceType
+  fileName        String
+  filePath        String
+  fileSize        Int
+  mimeType        String
+  sha256Hash      String
+  blockchainTxId  String?
+  uploadedById    String
+  uploadedBy      User            @relation(fields: [uploadedById], references: [id])
+  ingestionStatus IngestionStatus @default(PENDING)
+  ingestionError  String?         @db.Text
+  processedAt     DateTime?
+  createdAt       DateTime        @default(now())
+
+  legalCategory    LegalDocumentCategory @default(INVESTIGATION_RECORD)
+  documentStatus   LegalDocumentStatus   @default(REGISTERED)
+  classification   ClassificationLevel   @default(OFFICIAL)
+  exhibitLabel     String?
+  legalCaption     String?               @db.Text
+  documentVersion  Int                   @default(1)
+  parentEvidenceId String?
+  parentEvidence   Evidence?             @relation("DocVersion", fields: [parentEvidenceId], references: [id], onDelete: SetNull)
+  childVersions    Evidence[]            @relation("DocVersion")
+  legalHold        Boolean               @default(false)
+  registerNumber   String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  bsaCertifiedAt   DateTime?
+  ioCertifiedAt    DateTime?
+  ioCertifiedById  String?
+  prosecutionCertifiedAt DateTime?
+  prosecutionCertifiedById String?
+  disclosureAnnexure String?
+  electronicSealId   String?
+  ocrTextExcerpt     String?               @db.Text
+  legalTags          String[]              @default([])
+  relatedDocumentIds String[]              @default([])
+  legalWorkflowNote String?              @db.Text
+  retentionUntil   DateTime?
+
+  ingestionJobs IngestionJob[]
+  entities      Entity[]
+  relationships Relationship[]
+  cdrRecords    CdrRecord[]
+  transactions  Transaction[]
+  custodyLogs   CustodyLog[]
+  ledgerBlocks  LedgerBlock[]
+
+  @@index([caseId, documentStatus])
+  @@index([caseId, legalCategory])
+  @@index([registerNumber])
+  @@index([caseId, sha256Hash])
+}
+
+/// SIH26190 Smart Automation — auditable playbook execution history
+model LegalAutomationRun {
+  id         String   @id @default(cuid())
+  caseId     String?
+  case       Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  playbookId String
+  status     String   @default("COMPLETED")
+  steps      Json
+  summary    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([caseId])
+  @@index([playbookId])
+  @@index([createdAt])
+}
+
+model IngestionJob {
+  id          String          @id @default(cuid())
+  evidenceId  String
+  evidence    Evidence        @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  status      IngestionStatus @default(PENDING)
+  progress    Int             @default(0)
+  result      Json?
+  error       String?         @db.Text
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+}
+
+model Entity {
+  id              String     @id @default(cuid())
+  caseId          String
+  case            Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidenceId      String?
+  evidence        Evidence?  @relation(fields: [evidenceId], references: [id])
+  type            EntityType
+  normalizedValue String
+  rawValues       String[]
+  confidence      Float      @default(1.0)
+  metadata        Json?
+  neo4jNodeId     String?
+  mergedIntoId    String?
+  mergedInto      Entity?    @relation("EntityMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom      Entity[]   @relation("EntityMerge")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  sourceRelationships Relationship[] @relation("SourceEntity")
+  targetRelationships Relationship[] @relation("TargetEntity")
+  matchesA            EntityMatch[]  @relation("EntityA")
+  matchesB            EntityMatch[]  @relation("EntityB")
+  alerts              Alert[]
+
+  @@index([caseId, type])
+  @@index([normalizedValue])
+  @@index([mergedIntoId])
+}
+
+model EntityMatch {
+  id           String      @id @default(cuid())
+  entityAId    String
+  entityA      Entity      @relation("EntityA", fields: [entityAId], references: [id], onDelete: Cascade)
+  entityBId    String
+  entityB      Entity      @relation("EntityB", fields: [entityBId], references: [id], onDelete: Cascade)
+  confidence   Float
+  reasons      Json
+  status       MatchStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?       @relation("MatchReviewer", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@unique([entityAId, entityBId])
+}
+
+model Relationship {
+  id             String   @id @default(cuid())
+  sourceEntityId String
+  sourceEntity   Entity   @relation("SourceEntity", fields: [sourceEntityId], references: [id], onDelete: Cascade)
+  targetEntityId String
+  targetEntity   Entity   @relation("TargetEntity", fields: [targetEntityId], references: [id], onDelete: Cascade)
+  relationType   String
+  confidence     Float    @default(1.0)
+  evidenceId     String?
+  evidence       Evidence? @relation(fields: [evidenceId], references: [id])
+  recordRef      String?
+  approved       Boolean  @default(false)
+  metadata       Json?
+  neo4jEdgeId    String?
+  createdAt      DateTime @default(now())
+}
+
+model CdrRecord {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidenceId String?
+  evidence   Evidence? @relation(fields: [evidenceId], references: [id])
+  caller     String
+  receiver   String
+  timestamp  DateTime
+  duration   Int
+  location   String?
+  towerId    String?
+  imei       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([caseId, timestamp])
+  @@index([caller])
+  @@index([receiver])
+}
+
+model Transaction {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidenceId String?
+  evidence   Evidence? @relation(fields: [evidenceId], references: [id])
+  sender     String
+  receiver   String
+  amount     Decimal   @db.Decimal(15, 2)
+  currency   String    @default("INR")
+  timestamp  DateTime
+  bank       String?
+  upiId      String?
+  ifsc       String?
+  reference  String?
+  createdAt  DateTime  @default(now())
+}
+
+model LocationEvent {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityRef String?
+  latitude  Float?
+  longitude Float?
+  address   String?
+  towerId   String?
+  timestamp DateTime
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+model Alert {
+  id           String      @id @default(cuid())
+  type         AlertType
+  title        String
+  message      String      @db.Text
+  confidence   Float?
+  caseId       String?
+  case         Case?       @relation(fields: [caseId], references: [id])
+  entityId     String?
+  entity       Entity?     @relation(fields: [entityId], references: [id])
+  metadata     Json?
+  status       AlertStatus @default(NEW)
+  assigneeId   String?
+  assignee     User?       @relation("AlertAssignee", fields: [assigneeId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([userId])
+}
+
+model CustodyLog {
+  id          String       @id @default(cuid())
+  evidenceId  String
+  evidence    Evidence     @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  event       CustodyEvent
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  details     String?      @db.Text
+  hashAtEvent String?
+  ipAddress   String?
+  userAgent   String?
+  transferredToId String?
+  transferredTo   User?    @relation("CustodyTransferRecipient", fields: [transferredToId], references: [id])
+  transferStatus  CustodyTransferStatus @default(NOT_APPLICABLE)
+  senderConfirmedAt DateTime?
+  recipientConfirmedAt DateTime?
+  ledgerBlockId   String?  @unique
+  ledgerBlock     LedgerBlock? @relation(fields: [ledgerBlockId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@index([evidenceId, createdAt])
+  @@index([transferredToId, transferStatus])
+}
+
+/// Immutable hash-chained ledger block (ISO/IEC 27037 + ChainSEAL pattern)
+/// Raw evidence stays off-chain (MinIO); only hashes + metadata on ledger
+model LedgerBlock {
+  id           String        @id @default(cuid())
+  blockIndex   Int           @unique
+  evidenceId   String?
+  evidence     Evidence?     @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  event        CustodyEvent
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  payload      Json
+  previousHash String
+  blockHash    String        @unique
+  onChainTxId  String?
+  ipAddress    String?
+  createdAt    DateTime      @default(now())
+  custodyLog   CustodyLog?
+
+  @@index([evidenceId])
+  @@index([createdAt])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title     String
+  content   Json
+  pdfPath   String?
+  createdById String
+  createdBy User     @relation(fields: [createdById], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model InvestigationSnapshot {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  snapshot  Json
+  createdAt DateTime @default(now())
+}
+
+model CaseKnowledgeChunk {
+  id         String   @id @default(cuid())
+  caseId     String
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  chunkType  String
+  sourceType String
+  sourceId   String?
+  evidenceId String?
+  metadata   Json?
+  keywords   String[]
+  embedding  Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([caseId, chunkType])
+  @@index([evidenceId])
+}
+
+model CopilotQueryLog {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  query     String   @db.Text
+  intent    String
+  answer    String   @db.Text
+  sources   Json
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([createdAt])
+}

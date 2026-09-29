@@ -1,35 +1,9 @@
-# BharatRaksha AI
+# SIH26190 — Bharat Raksha AI
 
-**The AI Shield for Every Disaster**
+**Secure Digital Document Management for Legal and Investigation Documents**
 
-AI-powered Disaster Response Intelligence Platform for India.
+**Problem Statement: SIH26190 only** — Ministry of Home Affairs (MHA) · Theme: **Smart Automation**
+
+Optional **Smart Automation+** modules (network, copilot, court assist, etc.) run on the **same case and legal register** — they are extra capabilities for SIH26190, not a separate problem statement.
 
 ## Stack
-
-- Next.js + React + TypeScript + Tailwind CSS
-- Supabase + PostgreSQL + Prisma (next)
-- FastAPI + Python AI services (next)
-- Generative AI / ML / CV / NLP
-- Mapbox + PWA
-- Deploy: GitHub + Vercel
-
-## Run locally
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-## Current pages
-
-- `/` Home
-- `/assistant` All-in-One AI Assistant
-- `/map` Live Disaster Map (demo layers)
-- `/dashboard` Government / Rescue dashboard
-- `/api/assistant` Assistant API
-
-## Docs
-
-Ideation PPT: `docs/BharatRaksha_AI_Decode_SIH_2026_Ideation.pptx`

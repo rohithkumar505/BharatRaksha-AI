@@ -1,0 +1,52 @@
+import { withAuth } from "next-auth/middleware";
+
+export default withAuth({
+  pages: { signIn: "/login" },
+});
+
+export const config = {
+  matcher: [
+    "/dashboard/:path*",
+    "/cases/:path*",
+    "/network/:path*",
+    "/intelligence/:path*",
+    "/alerts/:path*",
+    "/entities/:path*",
+    "/copilot/:path*",
+    "/admin/:path*",
+    "/settings/:path*",
+    // Extra AI hubs (Phase 1+ additive) — must stay auth-gated
+    "/features/:path*",
+    "/evidence/:path*",
+    "/cyber/:path*",
+    "/women-safety/:path*",
+    "/conflicts/:path*",
+    "/clues/:path*",
+    "/silence/:path*",
+    "/mirror/:path*",
+    "/twins/:path*",
+    "/cinema/:path*",
+    "/chargesheet/:path*",
+    "/court/:path*",
+    "/legal-command/:path*",
+    "/sih26190/:path*",
+    "/legal-docs/:path*",
+    "/help/:path*",
+    "/coach/:path*",
+    "/voice/:path*",
+    "/mo-twins/:path*",
+    "/brief/:path*",
+    "/api/cases/:path*",
+    "/api/dashboard/:path*",
+    "/api/alerts/:path*",
+    "/api/copilot/:path*",
+    "/api/entities/:path*",
+    "/api/evidence/:path*",
+    "/api/users/:path*",
+    "/api/audit/:path*",
+    "/api/graph/:path*",
+    "/api/legal-documents/:path*",
+    "/api/auth/change-password",
+    "/api/auth/mfa/:path*",
+  ],
+};

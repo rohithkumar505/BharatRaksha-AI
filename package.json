@@ -1,28 +1,23 @@
 {
-  "name": "bharatraksha-ai",
-  "version": "0.1.0",
+  "name": "bharat-raksha-ai",
+  "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "npm run dev --workspace=@bharat-raksha/web",
+    "start:local": "bash scripts/start-dev.sh",
+    "build": "npm run build --workspace=@bharat-raksha/web",
+    "db:generate": "npm run generate --workspace=@bharat-raksha/database",
+    "db:migrate": "npm run migrate --workspace=@bharat-raksha/database",
+    "db:push": "npm run push --workspace=@bharat-raksha/database",
+    "db:seed": "npm run seed --workspace=@bharat-raksha/database",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "ai:dev": "cd services/ai && python -m uvicorn main:app --reload --port 8001",
+    "verify:sih26190": "npx tsx scripts/verify-sih26190-live.ts"
   },
-  "dependencies": {
-    "lucide-react": "^1.30.0",
-    "next": "16.3.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  },
-  "description": "BharatRaksha AI — The AI Shield for Every Disaster"
+  "description": "Bharat Raksha AI — MHA SIH26190 Secure Digital Document Management (Smart Automation)"
 }

@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bharatraksha
+          POSTGRES_PASSWORD: bharatraksha_secret
+          POSTGRES_DB: bharatraksha
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bharatraksha -d bharatraksha"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://bharatraksha:bharatraksha_secret@localhost:5432/bharatraksha
+      NEXTAUTH_SECRET: ci-test-secret-min-32-chars-long
+      NEXTAUTH_URL: http://localhost:3000
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Push database schema
+        run: npm run db:push
+
+      - name: Lint
+        run: npm run lint --workspace=@bharat-raksha/web
+
+      - name: Build
+        run: npm run build

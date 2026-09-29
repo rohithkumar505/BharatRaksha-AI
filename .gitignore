@@ -16,6 +16,16 @@
 # next.js
 /.next/
 /out/
+apps/*/.next/
+apps/*/out/
+
+# monorepo
+node_modules/
+packages/**/node_modules/
+services/**/__pycache__/
+
+# local / IDE
+.commandcode/
 
 # production
 /build
